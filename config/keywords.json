@@ -1,0 +1,4 @@
+{
+    "keywords": ["0day", "zero-day", "zero day", "nday", "1day", "poc", "exploit", "vulnerability"],
+    "cve_pattern": "CVE-\\d{4}-\\d{4,7}"
+  }

@@ -1,131 +1,53 @@
-name: Comprehensive 0day/PoC Monitor
+name: 0day-monitor 0day监控
 
 on:
   schedule:
-    - cron: '0 */3 * * *'  # 每3小时运行一次
+    - cron: '0 9 * * *'   # UTC 时间每天早上9点执行
   workflow_dispatch:
 
 jobs:
-  monitor:
-    runs-on: ubuntu-latest
+  crawl-and-update:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+
     steps:
-      - name: Checkout code
+      - name: 检出仓库
         uses: actions/checkout@v4
-        
-      - name: Setup Python
+
+      - name: 设置Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.10'
-          
-      - name: Install dependencies
+
+      - name: 安装依赖
         run: |
-          python -m pip install --upgrade pip
-          pip install requests beautifulsoup4 feedparser python-telegram-bot python-dotenv
-          git clone https://github.com/yhy0/github-cve-monitor.git
-          cd github-cve-monitor
+          pip install --upgrade pip
           pip install -r requirements.txt
-          cd ..
-          
-      - name: Run comprehensive monitor
-        env:
-          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          DINGTALK_WEBHOOK: ${{ secrets.DINGTALK_WEBHOOK }}
-          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+
+      - name: 安装Playwright浏览器
         run: |
-          python << 'EOF'
-          import requests
-          from bs4 import BeautifulSoup
-          import feedparser
-          from telegram import Bot
-          import os
-          from datetime import datetime, timedelta
-          
-          # 初始化通知渠道
-          bot = Bot(token=os.getenv('TELEGRAM_BOT_TOKEN'))
-          chat_id = os.getenv('TELEGRAM_CHAT_ID')
-          
-          def send_alert(message, platform='all'):
-              if platform in ['all', 'slack'] and os.getenv('SLACK_WEBHOOK'):
-                  requests.post(os.getenv('SLACK_WEBHOOK'), json={'text': message})
-              if platform in ['all', 'telegram'] and chat_id:
-                  bot.send_message(chat_id, message)
-              if platform in ['all', 'dingtalk'] and os.getenv('DINGTALK_WEBHOOK'):
-                  requests.post(os.getenv('DINGTALK_WEBHOOK'), json={'msgtype': 'text', 'text': {'content': message}})
-              if platform in ['all', 'discord'] and os.getenv('DISCORD_WEBHOOK'):
-                  requests.post(os.getenv('DISCORD_WEBHOOK'), json={'content': message})
-          
-          # 1. GitHub CVE 监控
-          try:
-              os.chdir('github-cve-monitor')
-              import github_cve_monitor
-              github_cve_monitor.main()
-              os.chdir('..')
-          except Exception as e:
-              print(f"GitHub CVE monitor error: {str(e)}")
-          
-          # 2. RSS 和 Twitter 监控
-          RSS_FEEDS = [
-              "https://thehackernews.com/feeds/posts/default",
-              "https://www.exploit-db.com/rss.xml",
-          ]
-          
-          TWITTER_KEYWORDS = ["0day", "PoC", "exploit"]
-          NITTER_RSS = "https://nitter.net/search/rss?f=tweets&q=" + "+OR+".join(TWITTER_KEYWORDS)
-          
-          def check_rss(feed_url):
-              feed = feedparser.parse(feed_url)
-              for entry in feed.entries[:5]:
-                  if any(keyword.lower() in entry.title.lower() for keyword in TWITTER_KEYWORDS):
-                      send_alert(f"⚠️ 0day Alert: {entry.title}\n{entry.link}")
-          
-          check_rss(NITTER_RSS)
-          for rss in RSS_FEEDS:
-              check_rss(rss)
-          
-          # 3. NVD 0day 监控
-          try:
-              NVD_API = "https://services.nvd.nist.gov/rest/json/cves/2.0"
-              today = datetime.now()
-              yesterday = today - timedelta(days=1)
-              params = {
-                  "pubStartDate": yesterday.strftime("%Y-%m-%dT%H:%M:%S.000"),
-                  "pubEndDate": today.strftime("%Y-%m-%dT%H:%M:%S.000"),
-                  "keywordSearch": "0day OR exploit",
-              }
-              
-              response = requests.get(NVD_API, params=params).json()
-              for vuln in response.get("vulnerabilities", []):
-                  cve_id = vuln["cve"]["id"]
-                  description = vuln["cve"]["descriptions"][0]["value"]
-                  if "0day" in description.lower() or "exploit" in description.lower():
-                      severity = vuln["cve"].get("metrics", {}).get("cvssMetricV31", [{}])[0].get("cvssData", {}).get("baseScore", "N/A")
-                      message = f"🚨 New 0day CVE: {cve_id} (CVSS: {severity})\n{description}\nhttps://nvd.nist.gov/vuln/detail/{cve_id}"
-                      send_alert(message)
-          except Exception as e:
-              print(f"NVD monitor error: {str(e)}")
-          
-          # 4. GitHub 趋势安全项目监控
-          try:
-              URL = "https://github.com/trending/security"
-              response = requests.get(URL)
-              soup = BeautifulSoup(response.text, "html.parser")
-              repos = soup.select("article.Box-row")
-          
-              for repo in repos[:5]:
-                  title = repo.select_one("h2 a").text.strip()
-                  desc = repo.select_one("p") and repo.select_one("p").text.strip() or "No description"
-                  link = "https://github.com" + repo.select_one("h2 a")["href"]
-                  if "exploit" in title.lower() or "poc" in title.lower() or "0day" in desc.lower():
-                      message = f"📈 Trending Security Repo: **{title}**\n{desc}\n{link}"
-                      send_alert(message, 'telegram')
-          except Exception as e:
-              print(f"GitHub trending monitor error: {str(e)}")
-          EOF
-          
-      - name: Archive results
-        uses: actions/upload-artifact@v3
-        with:
-          name: monitoring-results
-          path: results.txt
+          python -m playwright install chromium
+          python -m playwright install-deps
+
+      - name: 执行爬虫脚本
+        run: python 0day.py
+
+      - name: 获取最新文件
+        id: files
+        run: |
+          JSON_FILE=$(ls 0day_*.json | sort -r | head -n 1)
+          MD_FILE=$(ls 0day_*.md | sort -r | head -n 1)
+          echo "json_file=${JSON_FILE}" >> $GITHUB_OUTPUT
+          echo "md_file=${MD_FILE}" >> $GITHUB_OUTPUT
+
+      - name: 自动提交更新
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git add 0day_*.json 0day_*.md
+          if [ -n "$(git status --porcelain)" ]; then
+            git commit -m "自动更新0day: $(date +'%Y-%m-%d %H:%M')"
+            git push
+          else
+            echo "无变更可提交"
+          fi
