@@ -1,7 +1,6 @@
 import concurrent.futures
 import json
 from modules.hackernews import HackerNewsFetcher
-from modules.exploitdb import ExploitDBFetcher
 from reporter.markdown_reporter import MarkdownReporter
 import logging
 import logging.handlers
@@ -27,7 +26,7 @@ def main():
 
     fetchers = [
         HackerNewsFetcher(config),
-        ExploitDBFetcher(config),
+
 
     ]
 
