@@ -1,3 +1,4 @@
+from typing import List
 import requests
 import re
 from datetime import datetime, timedelta
