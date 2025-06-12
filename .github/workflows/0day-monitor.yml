@@ -2,7 +2,7 @@ name: 0day-monitor 0day监控
 
 on:
   schedule:
-    - cron: '0 9 * * *'   # UTC 时间每天早上9点执行
+    - cron: '0 * * * *'   # 每小时的 0 分执行（即每小时一次）
   workflow_dispatch:
 
 jobs:
