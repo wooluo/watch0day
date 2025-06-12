@@ -26,8 +26,8 @@ class MarkdownReporter:
         unique_items.sort(key=lambda x: x.get("date", ""), reverse=True)
 
         timestamp = self.now.strftime('%Y%m%d_%H%M')
-        json_file = f"0day_results_{timestamp}.json"
-        md_file = f"0day_report_{timestamp}.md"
+        json_file = os.path.join("result", f"0day_results_{timestamp}.json")
+        md_file = os.path.join("result", f"0day_report_{timestamp}.md")
 
         # 写入 JSON
         with open(json_file, "w", encoding="utf-8") as f:
@@ -74,7 +74,7 @@ class MarkdownReporter:
                     f.write(f"\n{item['summary']}\n")
             
             # 生成英文报告
-            en_md_file = f"0day_report_{timestamp}_en.md"
+            en_md_file = os.path.join("result", f"0day_report_{timestamp}_en.md")
             with open(en_md_file, "w", encoding="utf-8") as en_f:
                 en_f.write("# 0day Vulnerability Monitoring Report\n")
                 en_f.write(f"**Generated at**: {self.now.strftime('%Y-%m-%d %H:%M')} (UTC+8)\n")
