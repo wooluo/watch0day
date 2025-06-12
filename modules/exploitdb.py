@@ -1,3 +1,4 @@
+from typing import List
 import feedparser
 from .fetcher import Fetcher
 from datetime import datetime
