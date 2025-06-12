@@ -6,7 +6,7 @@
 ![GitHub License](https://img.shields.io/github/license/wooluo/watch0day)
 
 ## 📌 项目简介
-本项目是一个自动化0day漏洞监控系统，通过GitHub Actions定时抓取互联网最新漏洞情报，自动翻译并生成结构化报告。系统每天UTC时间9:00自动运行【现改为每小时运行】，也可手动触发。
+本项目是一个自动化0day漏洞监控系统，通过GitHub Actions定时抓取互联网最新漏洞情报，自动翻译并生成结构化报告。系统每天UTC时间9:00自动运行，也可手动触发。
 
 [查看最新工作流运行状态](https://github.com/wooluo/watch0day/actions/workflows/0day-monitor.yml)
 
