@@ -1,3 +1,4 @@
+from typing import List
 from playwright.sync_api import sync_playwright
 from .fetcher import Fetcher
 from datetime import datetime
