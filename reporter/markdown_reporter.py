@@ -1,12 +1,13 @@
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 import json
 import os
-import pytz
+from googletrans import Translator
+import asyncio
 
 class MarkdownReporter:
     def __init__(self, items):
         self.items = items
-        self.timezone = pytz.timezone("Asia/Shanghai")
+        self.timezone = timezone(timedelta(hours=8))  # UTC+8 for Shanghai
         self.now = datetime.now(self.timezone)
 
     def generate(self):
@@ -40,9 +41,50 @@ class MarkdownReporter:
 
         # 写入 Markdown
         with open(md_file, "w", encoding="utf-8") as f:
+            translator = Translator()
+            
+            # 生成中文报告
             f.write("# 0day漏洞监控报告\n")
             f.write(f"**生成时间**: {self.now.strftime('%Y-%m-%d %H:%M')} (UTC+8)\n")
             f.write(f"**共找到 {len(unique_items)} 条相关信息**\n")
+            
+            async def translate_text(text):
+                try:
+                    result = await translator.translate(text, dest='zh-cn')
+                    return result.text
+                except Exception as e:
+                    print(f"翻译失败: {e}")
+                    return text
+            
+            for item in unique_items:
+                try:
+                    loop = asyncio.get_event_loop()
+                    translated_title = loop.run_until_complete(translate_text(item['title']))
+                    translated_summary = loop.run_until_complete(translate_text(item['summary']))
+                    
+                    f.write(f"\n## {translated_title}\n")
+                    f.write(f"**来源**: {item['source']}  |  **日期**: {item['date']}\n")
+                    f.write(f"**链接**: [{item['link']}]({item['link']})\n")
+                    f.write(f"\n{translated_summary}\n")
+                except Exception as e:
+                    print(f"翻译处理失败: {e}")
+                    f.write(f"\n## {item['title']}\n")
+                    f.write(f"**来源**: {item['source']}  |  **日期**: {item['date']}\n")
+                    f.write(f"**链接**: [{item['link']}]({item['link']})\n")
+                    f.write(f"\n{item['summary']}\n")
+            
+            # 生成英文报告
+            en_md_file = f"0day_report_{timestamp}_en.md"
+            with open(en_md_file, "w", encoding="utf-8") as en_f:
+                en_f.write("# 0day Vulnerability Monitoring Report\n")
+                en_f.write(f"**Generated at**: {self.now.strftime('%Y-%m-%d %H:%M')} (UTC+8)\n")
+                en_f.write(f"**Total results found**: {len(unique_items)}\n")
+                
+                for item in unique_items:
+                    en_f.write(f"\n## {item['title']}\n")
+                    en_f.write(f"**Source**: {item['source']}  |  **Date**: {item['date']}\n")
+                    en_f.write(f"**Link**: [{item['link']}]({item['link']})\n")
+                    en_f.write(f"\n{item['summary']}\n")
 
             type_stats = {}
             for item in unique_items:

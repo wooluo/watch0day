@@ -1,14 +1,11 @@
 import concurrent.futures
 import json
 from modules.hackernews import HackerNewsFetcher
-from modules.nvd import NVDFetcher
 from modules.exploitdb import ExploitDBFetcher
-from modules.twitter import TwitterFetcher
 from reporter.markdown_reporter import MarkdownReporter
 import logging
 import logging.handlers
 import os
-import pytz
 
 # 设置日志
 os.makedirs("logs", exist_ok=True)
@@ -30,9 +27,8 @@ def main():
 
     fetchers = [
         HackerNewsFetcher(config),
-        NVDFetcher(config),
         ExploitDBFetcher(config),
-        TwitterFetcher(config)
+
     ]
 
     all_results = []

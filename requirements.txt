@@ -1,6 +1,6 @@
 requests
 beautifulsoup4
 feedparser
-pytz
 playwright
 jsonschema
+googletrans

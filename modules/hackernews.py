@@ -1,8 +1,8 @@
 from typing import List
 import feedparser
 from .fetcher import Fetcher
-from datetime import datetime
-import pytz
+from datetime import datetime, timezone, timedelta
+
 
 class HackerNewsFetcher(Fetcher):
     def fetch(self) -> List[dict]:
@@ -16,7 +16,7 @@ class HackerNewsFetcher(Fetcher):
                 title = entry.title.lower()
                 desc = entry.description.lower()
                 if any(kw in title or kw in desc for kw in self.config["keywords"]):
-                    date = datetime(*entry.published_parsed[:6]).astimezone(pytz.timezone("Asia/Shanghai"))
+                    date = datetime(*entry.published_parsed[:6]).astimezone(timezone(timedelta(hours=8)))
                     results.append({
                         "source": "The Hacker News",
                         "title": entry.title,
