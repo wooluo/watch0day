@@ -29,18 +29,30 @@ class RSSFetcher(Fetcher):
         results = []
         for source in self.sources:
             max_retries = 3
-            timeout_seconds = 10
+            timeout_seconds = 15  # Increased from 10 to 15 seconds
             
             for attempt in range(max_retries):
                 try:
-                    # 设置feedparser的超时
-                    feed = feedparser.parse(source["url"], 
-                                          request_headers={'User-agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1'},
-                                          timeout=timeout_seconds)
+                    # 使用requests获取RSS内容并设置超时
+                    import requests
+                    from requests.exceptions import RequestException
+                    try:
+                        proxies = {
+                            'http': 'http://127.0.0.1:7890',
+                            'https': 'http://127.0.0.1:7890'
+                        } if 'proxy' in self.config and self.config['proxy'] else None
+                        response = requests.get(source["url"], 
+                                             headers={'User-agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1'},
+                                             timeout=(3.05, timeout_seconds),
+                                             proxies=proxies)  # Connect timeout 3.05s, read timeout 10s
+                    except RequestException as e:
+                        raise Exception(f"Network error: {str(e)}")
+                    response.raise_for_status()
+                    feed = feedparser.parse(response.content)
                     
                     if feed.bozo and feed.bozo_exception:
                         raise Exception(f"RSS解析错误: {feed.bozo_exception}")
-                        
+                    
                     for entry in feed.entries[:50]:
                         title = entry.title.lower()
                         desc = entry.description.lower() if hasattr(entry, 'description') else ""

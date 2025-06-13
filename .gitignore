@@ -1,0 +1,10 @@
+# Python virtual environment
+venv/
+
+# Mac temporary files
+.DS_Store
+._*
+
+# JSON and Markdown files
+*.json
+*.md
